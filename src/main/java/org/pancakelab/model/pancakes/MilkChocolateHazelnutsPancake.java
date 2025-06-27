@@ -1,6 +1,9 @@
 package org.pancakelab.model.pancakes;
 
+import org.pancakelab.util.PancakeUtils;
+
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 public class MilkChocolateHazelnutsPancake extends MilkChocolatePancake {
@@ -19,5 +22,24 @@ public class MilkChocolateHazelnutsPancake extends MilkChocolatePancake {
     @Override
     public List<String> ingredients() {
         return List.of("milk chocolate", "hazelnuts");
+    }
+
+    @Override
+    public String getRecipeKey() {
+        return PancakeUtils.normalizeIngredients(ingredients());
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        MilkChocolateHazelnutsPancake that = (MilkChocolateHazelnutsPancake) o;
+        return Objects.equals(orderId, that.getOrderId()) &&
+                Objects.equals(description(), that.description());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(orderId, description());
     }
 }

@@ -12,4 +12,5 @@ public interface PancakeRecipe {
     UUID getOrderId();
     void setOrderId(UUID orderId);
     List<String> ingredients();
+    String getRecipeKey();
 }

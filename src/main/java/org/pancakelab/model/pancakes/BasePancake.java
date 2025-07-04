@@ -1,15 +1,12 @@
 package org.pancakelab.model.pancakes;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public class CustomPancake implements PancakeRecipe {
-    private UUID orderId;
-    private final List<String> customIngredients;
+public class BasePancake implements PancakeRecipe {
 
-    public CustomPancake(List<String> customIngredients) {
-        this.customIngredients = customIngredients;
-    }
+    private UUID orderId;
 
     @Override
     public UUID getOrderId() {
@@ -23,6 +20,6 @@ public class CustomPancake implements PancakeRecipe {
 
     @Override
     public List<String> ingredients() {
-        return customIngredients;
+        return new ArrayList<>();
     }
 }

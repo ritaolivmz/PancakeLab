@@ -26,8 +26,14 @@ public class OrderManagementService {
         this.pancakeOrderService = new PancakeOrderService(pancakeService, orderService);
     }
 
+    public OrderManagementService(PancakeService pancakeService, OrderService orderService, PancakeOrderService pancakeOrderService) {
+        this.pancakeService = pancakeService;
+        this.orderService = orderService;
+        this.pancakeOrderService = pancakeOrderService;
+    }
+
     public void removePancakesFromOrder(UUID orderId, String description, int count) {
-        pancakeOrderService.removePancakesFromOrder(description, orderId, count);
+        pancakeOrderService.removePancakesFromOrder(orderId, description, count);
     }
 
     public List<String> viewOrder(UUID orderId) {
@@ -98,8 +104,8 @@ public class OrderManagementService {
         pancakeService.removePancakesForOrder(orderId);
     }
 
-    public List<PancakeRecipe> removePancakes(String description, UUID orderId, int count) {
-        return pancakeService.removePancakes(description, orderId, count);
+    public List<PancakeRecipe> removePancakes(UUID orderId, String description, int count) {
+        return pancakeService.removePancakes(orderId, description, count);
     }
 }
 

@@ -1,22 +1,42 @@
 package org.pancakelab.model;
 
+import org.pancakelab.validators.InputValidator;
+
+import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class Order {
-    private static final AtomicInteger idGenerator = new AtomicInteger();
+
     private final UUID id;
     private final int building;
     private final int room;
+    private OrderStatus status;
 
     public Order(int building, int room) {
-        if (building <= 0 || room <= 0) throw new IllegalArgumentException("Invalid room or building.");
+        InputValidator.validateNonNegativeNumber(building, room);
         this.id = UUID.randomUUID();
         this.building = building;
         this.room = room;
+        this.status = OrderStatus.CREATED;
     }
 
     public UUID getId() { return id; }
     public int getBuilding() { return building; }
     public int getRoom() { return room; }
+    public OrderStatus getStatus() { return status; }
+
+    public void setStatus(OrderStatus status) { this.status = status; }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Order order = (Order) o;
+        return Objects.equals(id, order.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
 }

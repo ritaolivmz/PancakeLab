@@ -1,49 +1,46 @@
 package org.pancakelab.factory;
 
 import org.pancakelab.model.pancakes.*;
-import org.pancakelab.util.PancakeUtils;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class PancakeFactory {
 
-    private static final Map<String, PancakeRecipe> existingRecipes = new HashMap<>();
-
-    static {
-        addExistingRecipe(new DarkChocolatePancake());
-        addExistingRecipe(new DarkChocolateWhippedCreamPancake());
-        addExistingRecipe(new DarkChocolateWhippedCreamHazelnutsPancake());
-        addExistingRecipe(new MilkChocolatePancake());
-        addExistingRecipe(new MilkChocolateHazelnutsPancake());
-    }
-
-    private static void addExistingRecipe(PancakeRecipe recipe) {
-        existingRecipes.put(recipe.getRecipeKey(), recipe);
-    }
-
     public static PancakeRecipe createPancake(List<String> ingredients) {
-        String key =  PancakeUtils.normalizeIngredients(ingredients);
-        return existingRecipes.getOrDefault(key, new CustomPancake(ingredients));
-    }
-}
+        PancakeRecipe pancake = new BasePancake();
 
-//todo investigate if decorator is a better choice
-/*
-public class PancakeFactory {
-    public static PancakeRecipe createPancake(List<String> ingredients) {
-        PancakeRecipe base = new PlainPancake();
+        List<IngredientsType> decoratorTypes = new ArrayList<>();
+        List<String> customIngredients = new ArrayList<>();
+
         for (String ingredient : ingredients) {
-            switch (ingredient.toLowerCase()) {
-                case "milk-chocolate" -> base = new MilkChocolateDecorator(base);
-                case "dark-chocolate" -> base = new DarkChocolateDecorator(base);
-                case "whipped-cream" -> base = new WhippedCreamDecorator(base);
-                case "mustard" -> base = new MustardDecorator(base);  // even if cursed
-                default -> throw new IllegalArgumentException("Unknown ingredient: " + ingredient);
+            Optional<IngredientsType> decoratorType = IngredientsType.fromIngredientName(ingredient);
+            if (decoratorType.isPresent()) {
+                decoratorTypes.add(decoratorType.get());
+            } else {
+                customIngredients.add(ingredient);
             }
         }
-        return base;
+
+        if (!customIngredients.isEmpty()) {
+            pancake = new CustomPancake(customIngredients);
+        }
+
+        for (IngredientsType type : decoratorTypes) {
+            switch (type) {
+                case MILK_CHOCOLATE:
+                    pancake = new MilkChocolatePancakeDecorator(pancake);
+                    break;
+                case DARK_CHOCOLATE:
+                    pancake = new DarkChocolatePancakeDecorator(pancake);
+                    break;
+                case WHIPPED_CREAM:
+                    pancake = new WhippedCreamPancakeDecorator(pancake);
+                    break;
+                case HAZELNUTS:
+                    pancake = new HazelnutsPancakeDecorator(pancake);
+                    break;
+            }
+        }
+        return pancake;
     }
 }
-*/

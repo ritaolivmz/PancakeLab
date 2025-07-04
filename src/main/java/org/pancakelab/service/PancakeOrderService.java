@@ -2,7 +2,9 @@ package org.pancakelab.service;
 
 import org.pancakelab.factory.PancakeFactory;
 import org.pancakelab.model.Order;
+import org.pancakelab.model.OrderStatus;
 import org.pancakelab.model.pancakes.PancakeRecipe;
+import org.pancakelab.validators.InputValidator;
 
 import java.util.*;
 
@@ -11,36 +13,49 @@ public class PancakeOrderService {
     private final PancakeService pancakeService;
     private final OrderService orderService;
 
-    public PancakeOrderService(PancakeService pancakeService, OrderService orderService) {
+    PancakeOrderService(PancakeService pancakeService, OrderService orderService) {
         this.pancakeService = pancakeService;
         this.orderService = orderService;
     }
 
-    public void removePancakesFromOrder(String description, UUID orderId, int count) {
-        List<PancakeRecipe> removedPancakes = pancakeService.removePancakes(description, orderId, count);
+    void removePancakesFromOrder(UUID orderId, String description, int count) {
+        InputValidator.validateOrderId(orderId);
+        List<PancakeRecipe> removedPancakes = pancakeService.removePancakes(orderId, description, count);
         Optional<Order> orderOptional = orderService.getOrder(orderId);
         Order order = orderOptional.orElseThrow(() -> new NoSuchElementException("Order with ID " + orderId + " not found after pancake removal attempt."));
-        OrderLog.logRemovePancakes(order, description, removedPancakes.size(), removedPancakes);
+        OrderLog.logRemovePancakes(order, description, removedPancakes.size(), pancakeService.getPancakes());
     }
 
-    public void cancelOrder(UUID orderId) {
-        OrderLog.logCancelOrder(orderService.getOrder(orderId).orElseThrow(() -> new NoSuchElementException("Order with ID " + orderId + " not found when cancelling order.")), this.pancakeService.getPancakes());
+    void cancelOrder(UUID orderId) {
+        InputValidator.validateOrderId(orderId);
+        Optional<Order> orderOptional = orderService.getOrder(orderId);
+        Order order = orderOptional.orElseThrow(() -> new NoSuchElementException("Order with ID " + orderId + " not found when cancelling order."));
+
+        if (order.getStatus() == OrderStatus.COMPLETED) {
+            throw new IllegalStateException("Cannot cancel an already completed order " + orderId);
+        }
+
+        OrderLog.logCancelOrder(order, this.pancakeService.getPancakes());
 
         pancakeService.removePancakesForOrder(orderId);
-        orderService.listCompletedOrders().removeIf(o -> o.equals(orderId));
-        orderService.listPreparedOrders().removeIf(u -> u.equals(orderId));
-        orderService.getOrders().remove(orderId);
+        orderService.removeOrder(orderId);
     }
 
-    public List<String> viewOrder(UUID orderId) {
+    List<String> viewOrder(UUID orderId) {
+        InputValidator.validateOrderId(orderId);
         return pancakeService.getPancakes().stream()
-                .filter(pancake -> pancake.getOrderId().equals(orderId))
+                .filter(pancake -> pancake.getOrderId() != null && pancake.getOrderId().equals(orderId))
                 .map(PancakeRecipe::description).toList();
     }
 
-    public void addPancakesToOrder(UUID orderId, List<String> ingredients, int count) {
+    void addPancakesToOrder(UUID orderId, List<String> ingredients, int count) {
+        InputValidator.validateOrderId(orderId);
         Order order = orderService.getOrder(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+
+        if (order.getStatus() == OrderStatus.COMPLETED) {
+            throw new IllegalStateException("Cannot add pancakes to a completed order " + orderId);
+        }
 
         for (int i = 0; i < count; i++) {
             PancakeRecipe pancake = PancakeFactory.createPancake(ingredients);
@@ -50,18 +65,19 @@ public class PancakeOrderService {
         }
     }
 
-    public Object[] deliverOrder(UUID orderId) {
-        if (!orderService.isPrepared(orderId)) return null;
-
+    Object[] deliverOrder(UUID orderId) {
+        InputValidator.validateOrderId(orderId);
         Order order = orderService.getOrder(orderId).orElseThrow(() -> new NoSuchElementException("Order with ID " + orderId + " not found when delivering order."));
+
+        if (order.getStatus() != OrderStatus.PREPARED) {
+            throw new IllegalStateException("Order " + orderId + " is not prepared and cannot be delivered.");
+        }
+
         List<String> pancakesToDeliver = pancakeService.getPancakeDescriptionsForOrder(orderId);
-
-        OrderLog.logDeliverOrder(order, pancakeService.getPancakes()); // or pass just the relevant ones
-
+        OrderLog.logDeliverOrder(order, pancakeService.getPancakes());
         pancakeService.removePancakesForOrder(orderId);
         orderService.removeOrder(orderId);
 
         return new Object[] {order, pancakesToDeliver};
     }
-
 }

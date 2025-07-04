@@ -1,32 +1,79 @@
 package org.pancakelab.repository;
 
 import org.pancakelab.model.Order;
+import org.pancakelab.model.OrderStatus;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class OrderRepository {
-    private final Map<UUID, Order> orders = new ConcurrentHashMap<>();
-    private final Set<UUID> completedOrders = ConcurrentHashMap.newKeySet();
-    private final Set<UUID> preparedOrders = ConcurrentHashMap.newKeySet();
 
-    public void save(Order o) { orders.put(o.getId(), o); }
-    public Optional<Order> findById(UUID id) { return Optional.ofNullable(orders.get(id)); }
-    public void delete(UUID id) { orders.remove(id); preparedOrders.remove(id); completedOrders.remove(id); }
-    public Collection<Order> findAll() { return orders.values(); }
-    public void markCompleted(UUID id) { completedOrders.add(id); }
-    public void markPrepared(UUID id) { preparedOrders.add(id); completedOrders.remove(id); }
-    public boolean isPrepared(UUID id) { return preparedOrders.contains(id); }
+    private final Map<UUID, Order> orders = new ConcurrentHashMap<>();
+    private final Object lock = new Object();
+
+    public void save(Order o) {
+        orders.put(o.getId(), o);
+    }
+
+    public void delete(UUID id) {
+        orders.remove(id);
+    }
+
+    public Order findById(UUID id) {
+        return orders.get(id);
+    }
+
+    public Collection<Order> findAll() {
+        return new ArrayList<>(orders.values());
+    }
+
+    public void markCompleted(UUID id) {
+        synchronized (lock) {
+            Order order = orders.get(id);
+            if (order != null) {
+                order.setStatus(OrderStatus.COMPLETED);
+            }
+        }
+    }
+
+    public void markCompleted(Order order) {
+        synchronized (lock) {
+            if (order != null) {
+                order.setStatus(OrderStatus.COMPLETED);
+            }
+        }
+    }
+
+    public void markPrepared(UUID id) {
+        synchronized (lock) {
+            Order order = orders.get(id);
+            if (order != null) {
+                order.setStatus(OrderStatus.PREPARED);
+            }
+        }
+    }
+
+    public boolean isPrepared(UUID id) {
+        Order order = orders.get(id);
+        return order != null && order.getStatus() == OrderStatus.PREPARED;
+    }
 
     public Set<UUID> getCompletedOrders() {
-        return completedOrders;
+        return orders.values().stream()
+                .filter(order -> order.getStatus() == OrderStatus.COMPLETED)
+                .map(Order::getId)
+                .collect(Collectors.toSet());
     }
 
     public Set<UUID> getPreparedOrders() {
-        return preparedOrders;
+        return orders.values().stream()
+                .filter(order -> order.getStatus() == OrderStatus.PREPARED)
+                .map(Order::getId)
+                .collect(Collectors.toSet());
     }
 
     public Map<UUID, Order> getOrders() {
-        return orders;
+        return new ConcurrentHashMap<>(orders);
     }
 }

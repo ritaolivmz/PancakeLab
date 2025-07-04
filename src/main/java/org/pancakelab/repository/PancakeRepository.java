@@ -19,35 +19,11 @@ public class PancakeRepository {
         return new ArrayList<>(pancakes);
     }
 
-    public List<String> findDescriptionsByOrderId(UUID orderId) {
-        return pancakes.stream()
-                .filter(p -> orderId.equals(p.getOrderId()))
-                .map(PancakeRecipe::description)
-                .toList();
-    }
-
-    public void deletePancakesByOrderId(UUID orderId) {
-        pancakes.removeIf(p -> orderId.equals(p.getOrderId()));
-    }
-
-    public int removeMatching(UUID orderId, String description, int count) {
-        List<PancakeRecipe> pancakesToRemove = pancakes.stream()
-                .filter(p -> p.getOrderId().equals(orderId) &&
-                        p.description().equals(description))
-                .limit(count)
-                .toList();
-
+    public void removePancakes(List<PancakeRecipe> pancakesToRemove) {
         pancakes.removeAll(pancakesToRemove);
-        return pancakesToRemove.size();
     }
 
-    public boolean removePancakes(List<PancakeRecipe> pancakesToRemove) {
-        pancakesToRemove.forEach(pancake -> this.pancakes.remove(pancake));
-        //todo fix this return
-        return true;
-    }
-
-    public boolean removePancakesForOrder(UUID orderId) {
-        return pancakes.removeIf(pancake -> pancake.getOrderId().equals(orderId));
+    public void removePancakesForOrder(UUID orderId) {
+        pancakes.removeIf(pancake -> pancake.getOrderId() != null && pancake.getOrderId().equals(orderId));
     }
 }

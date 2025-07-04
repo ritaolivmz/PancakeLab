@@ -1,7 +1,10 @@
 package org.pancakelab.service;
 
 import org.pancakelab.model.Order;
+import org.pancakelab.model.OrderStatus;
 import org.pancakelab.repository.OrderRepository;
+import org.pancakelab.validators.BuildingValidator;
+import org.pancakelab.validators.InputValidator;
 
 import java.util.Map;
 import java.util.Optional;
@@ -12,55 +15,75 @@ public class OrderService {
 
     private final OrderRepository orderRepo;
 
-    public OrderService(OrderRepository orderRepo) {
+    OrderService(OrderRepository orderRepo) {
         this.orderRepo = orderRepo;
     }
 
-    public Order createOrder(int building, int room) {
-        validateBuildingAndRoom(building, room);
+    Set<UUID> listCompletedOrders() {
+        return orderRepo.getCompletedOrders();
+    }
+
+    Set<UUID> listPreparedOrders() {
+        return orderRepo.getPreparedOrders();
+    }
+
+    Map<UUID, Order> getOrders() {
+        return orderRepo.getOrders();
+    }
+
+    Order createOrder(int building, int room) {
+        BuildingValidator.validateBuildingExists(building);
+        BuildingValidator.validateRoomExists(building, room);
         Order order = new Order(building, room);
         orderRepo.save(order);
         return order;
     }
 
-    public void completeOrder(UUID orderId) {
-        orderRepo.markCompleted(orderId);
+    void completeOrder(UUID orderId) {
+        InputValidator.validateOrderId(orderId);
+        Optional<Order> orderOptional = orderRepo.findAll().stream()
+                .filter(o -> o.getId().equals(orderId))
+                .findFirst();
+
+        Order order = orderOptional.orElseThrow(() ->
+                new IllegalArgumentException("The provided order ID " + orderId + " was not found.")
+        );
+
+        if (order.getStatus() == OrderStatus.COMPLETED) {
+            throw new IllegalStateException("The provided order ID " + orderId + " is already completed.");
+        }
+
+        orderRepo.markCompleted(order);
     }
 
-    public Set<UUID> listCompletedOrders() {
-        return orderRepo.getCompletedOrders();
-    }
+    void prepareOrder(UUID orderId) {
+        InputValidator.validateOrderId(orderId);
+        Optional<Order> orderOptional = orderRepo.findAll().stream()
+                .filter(o -> o.getId().equals(orderId))
+                .findFirst();
+        Order order = orderOptional.orElseThrow(() ->
+                new IllegalArgumentException("The provided order ID " + orderId + " was not found.")
+        );
 
-    public Set<UUID> listPreparedOrders() {
-        return orderRepo.getPreparedOrders();
-    }
+        if (order.getStatus() == OrderStatus.PREPARED) {
+            throw new IllegalStateException("Order " + orderId + " is already prepared.");
+        }
 
-    public Map<UUID, Order> getOrders() {
-        return orderRepo.getOrders();
-    }
-
-    public void prepareOrder(UUID orderId) {
         orderRepo.markPrepared(orderId);
     }
 
-    public boolean isPrepared(UUID orderId) {
+    boolean isPrepared(UUID orderId) {
+        InputValidator.validateOrderId(orderId);
         return orderRepo.isPrepared(orderId);
     }
 
-    private void validateBuildingAndRoom(int building, int room) {
-        if (building <= 0 || room <= 0) {
-            throw new IllegalArgumentException("Invalid building or room number.");
-        }
+    Optional<Order> getOrder(UUID orderId) {
+        InputValidator.validateOrderId(orderId);
+        return Optional.ofNullable(orderRepo.findById(orderId));
     }
 
-    public Optional<Order> getOrder(UUID orderId) {
-        return orderRepo.findAll().stream()
-                .filter(o -> o.getId().equals(orderId))
-                .findFirst();
-    }
-
-    public void removeOrder(UUID orderId) {
+    void removeOrder(UUID orderId) {
+        InputValidator.validateOrderId(orderId);
         orderRepo.delete(orderId);
     }
-
 }
